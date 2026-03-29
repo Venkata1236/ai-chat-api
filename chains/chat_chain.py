@@ -1,3 +1,12 @@
+"""
+🔗 Chat Chain - LangChain Conversational Chain (v1.0.0 - 2026)
+==============================================================
+Builds GPT-4o-mini chain with persistent message history per session.
+Uses RunnableWithMessageHistory + ChatPromptTemplate with MessagesPlaceholder.
+Supports custom system prompts. Streamlit/CLI unified key resolution.
+Author: Venkata Reddy (@Venkata1236)
+"""
+
 import os
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
