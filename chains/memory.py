@@ -1,3 +1,13 @@
+"""
+🧠 Memory Store - In-Memory Session History Manager (v1.0.0 - 2026)
+====================================================================
+Global dict-based session store: session_id → ChatMessageHistory.
+Functions: get/clear/count session turns + list all active sessions.
+Used by LangChain RunnableWithMessageHistory for multi-turn chat.
+Author: Venkata Reddy (@Venkata1236)
+"""
+
+
 from langchain_community.chat_message_histories import ChatMessageHistory
 
 
