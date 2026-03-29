@@ -1,3 +1,13 @@
+"""
+🖥️ AI Chat API - Streamlit Frontend (v1.0.0 - 2026)
+====================================================
+Chat UI that connects to FastAPI backend via HTTP.
+Features: UUID session management, turn tracking, custom system prompt.
+Requires FastAPI running at localhost:8000.
+Author: Venkata Reddy (@Venkata1236)
+"""
+
+
 import streamlit as st
 import requests
 import uuid
