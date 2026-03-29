@@ -1,3 +1,14 @@
+"""
+⚡ AI Chat API - FastAPI Backend (v1.0.0 - 2026)
+================================================
+Production-ready REST API for AI conversations.
+Endpoints: POST /chat | GET /session | DELETE /session | GET /health
+LangChain memory per session_id. CORS enabled for Streamlit frontend.
+Author: Venkata Reddy (@Venkata1236)
+"""
+
+
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models.schemas import (
