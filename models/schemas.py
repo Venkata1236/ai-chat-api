@@ -1,3 +1,14 @@
+"""
+📐 Pydantic Schemas - API Request & Response Models (v1.0.0 - 2026)
+====================================================================
+5 models: ChatRequest, ChatResponse, SessionInfo, ClearResponse, HealthResponse.
+Enforces type validation for all FastAPI endpoints via Pydantic BaseModel.
+Swagger UI auto-generates from these schemas at /docs.
+Author: Venkata Reddy (@Venkata1236)
+"""
+
+
+
 from pydantic import BaseModel
 from typing import Optional
 
