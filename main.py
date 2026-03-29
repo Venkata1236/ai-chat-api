@@ -41,6 +41,8 @@ app = FastAPI(
 )
 
 # Allow Streamlit to call this API
+# Allow all origins for development — restrict in production
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
