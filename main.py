@@ -76,6 +76,7 @@ def health_check():
         active_sessions=len(get_all_sessions())
     )
 
+# Core chat endpoint — validates session, runs LangChain chain, returns AI reply
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 def chat(request: ChatRequest):
@@ -115,6 +116,7 @@ def chat(request: ChatRequest):
             detail=f"Chat failed: {str(e)}"
         )
 
+# Returns turn count + message history for a given session
 
 @app.get(
     "/session/{session_id}",
@@ -132,6 +134,7 @@ def get_session(session_id: str):
         history=history
     )
 
+# Wipes memory for the session — useful for fresh start without app restart
 
 @app.delete(
     "/session/{session_id}",
