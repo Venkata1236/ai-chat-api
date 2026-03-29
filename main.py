@@ -68,6 +68,7 @@ def root():
         ]
     }
 
+# Health check — used for uptime monitoring and deployment verification
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 def health_check():
