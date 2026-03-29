@@ -32,6 +32,7 @@ load_dotenv()
 
 # ─────────────────────────────────────────
 # FASTAPI APP
+# Initialize FastAPI app with metadata
 # ─────────────────────────────────────────
 app = FastAPI(
     title="AI Chat API",
