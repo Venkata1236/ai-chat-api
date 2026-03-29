@@ -6,57 +6,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 # ─────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────
-API_URL = os.getenv("API_URL", "")
-
-# Check if API mode or direct mode
-def get_api_key():
+def get_api_url():
     try:
-        return st.secrets["OPENAI_API_KEY"]
+        return st.secrets["API_URL"]
     except Exception:
-        return os.getenv("OPENAI_API_KEY")
+        return os.getenv("API_URL", "http://localhost:8000")
 
-def is_api_available():
-    if not API_URL:
-        return False
-    try:
-        health = requests.get(f"{API_URL}/health", timeout=2)
-        return health.status_code == 200
-    except Exception:
-        return False
 
-def chat_via_api(session_id, message, system_prompt):
-    response = requests.post(
-        f"{API_URL}/chat",
-        json={
-            "session_id": session_id,
-            "message": message,
-            "system_prompt": system_prompt
-        },
-        timeout=30
-    )
-    if response.status_code == 200:
-        data = response.json()
-        return data["response"], data["turn_count"]
-    return None, 0
+API_URL = get_api_url()
 
-def chat_direct(session_id, message, system_prompt):
-    """Direct LangChain call — used when no FastAPI available."""
-    from chains.chat_chain import run_chat
-    response = run_chat(
-        session_id=session_id,
-        message=message,
-        system_prompt=system_prompt
-    )
-    return response, len(st.session_state.chat_history) // 2 + 1
-
-st.set_page_config(
-    page_title="AI Chat API",
-    page_icon="⚡",
-    layout="centered"
-)
 
 # ─────────────────────────────────────────
 # SESSION STATE
@@ -68,7 +30,37 @@ if "chat_history" not in st.session_state:
 if "turn_count" not in st.session_state:
     st.session_state.turn_count = 0
 
-api_available = is_api_available()
+
+# ─────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────
+def check_api_health():
+    try:
+        response = requests.get(f"{API_URL}/health", timeout=5)
+        return response.status_code == 200, response.json()
+    except Exception:
+        return False, {}
+
+
+def send_message(session_id, message, system_prompt):
+    response = requests.post(
+        f"{API_URL}/chat",
+        json={
+            "session_id": session_id,
+            "message": message,
+            "system_prompt": system_prompt
+        },
+        timeout=30
+    )
+    return response
+
+
+st.set_page_config(
+    page_title="AI Chat API",
+    page_icon="⚡",
+    layout="centered"
+)
+
 
 # ─────────────────────────────────────────
 # SIDEBAR
@@ -77,15 +69,20 @@ with st.sidebar:
     st.title("⚡ AI Chat API")
     st.markdown("---")
 
+    # --- Session ---
     st.markdown("### 🔑 Session")
     st.code(st.session_state.session_id)
     st.caption("Each session has separate memory")
 
     st.markdown("---")
+
+    # --- Stats ---
     st.markdown("### 📊 Stats")
     st.metric("Turn Count", st.session_state.turn_count)
 
     st.markdown("---")
+
+    # --- System Prompt ---
     st.markdown("### ⚙️ Settings")
     system_prompt = st.text_area(
         "System Prompt",
@@ -95,6 +92,7 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # --- Buttons ---
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 New Session", use_container_width=True):
@@ -102,47 +100,83 @@ with st.sidebar:
             st.session_state.chat_history = []
             st.session_state.turn_count = 0
             st.rerun()
+
     with col2:
         if st.button("🗑️ Clear", use_container_width=True):
-            if api_available:
-                try:
-                    requests.delete(f"{API_URL}/session/{st.session_state.session_id}")
-                except Exception:
-                    pass
+            try:
+                requests.delete(
+                    f"{API_URL}/session/{st.session_state.session_id}",
+                    timeout=5
+                )
+            except Exception:
+                pass
             st.session_state.chat_history = []
             st.session_state.turn_count = 0
             st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🔌 Mode")
-    if api_available:
-        st.success("✅ FastAPI Mode")
-        st.caption(f"Connected to: {API_URL}")
+
+    # --- API Status ---
+    st.markdown("### 🔌 API Status")
+    is_healthy, health_data = check_api_health()
+    if is_healthy:
+        st.success("✅ API Online")
+        st.caption(f"Active sessions: {health_data.get('active_sessions', 0)}")
+        st.caption(f"URL: {API_URL}")
     else:
-        st.info("⚡ Direct Mode")
-        st.caption("LangChain called directly")
+        st.error("❌ API Offline")
+        st.caption(f"Cannot reach: {API_URL}")
+        if "localhost" in API_URL:
+            st.code("uvicorn main:app --reload --port 8000")
 
     st.markdown("---")
-    st.caption("Frontend-backend separation pattern.")
+
+    # --- View Session History ---
+    if st.button("📜 View Full History", use_container_width=True):
+        try:
+            response = requests.get(
+                f"{API_URL}/session/{st.session_state.session_id}",
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                st.json(data)
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+
+    st.markdown("---")
+    st.caption(
+        "FastAPI backend handles all chat logic. "
+        "Streamlit is just the frontend UI."
+    )
 
 
 # ─────────────────────────────────────────
-# MAIN
+# MAIN — HEADER
 # ─────────────────────────────────────────
 st.title("⚡ AI Chat API")
 st.caption(
     f"Session: `{st.session_state.session_id}` — "
-    "Memory persists across turns."
+    "Memory persists across turns via FastAPI backend."
 )
 
-if api_available:
-    st.success("🔗 Running via FastAPI backend")
+# Show API connection status
+is_healthy, _ = check_api_health()
+if is_healthy:
+    st.success(f"🔗 Connected to FastAPI at `{API_URL}`")
 else:
-    st.info("⚡ Running in direct mode — LangChain called directly")
+    st.error(
+        f"❌ Cannot connect to FastAPI at `{API_URL}`\n\n"
+        "Make sure your Railway backend is running and "
+        "API_URL is set correctly in Streamlit secrets."
+    )
 
 st.markdown("---")
 
-# Display chat history
+
+# ─────────────────────────────────────────
+# DISPLAY CHAT HISTORY
+# ─────────────────────────────────────────
 for message in st.session_state.chat_history:
     if message["role"] == "user":
         with st.chat_message("user", avatar="👤"):
@@ -151,32 +185,38 @@ for message in st.session_state.chat_history:
         with st.chat_message("assistant", avatar="⚡"):
             st.markdown(message["content"])
 
-# Chat input
-user_input = st.chat_input("Type your message...")
+
+# ─────────────────────────────────────────
+# CHAT INPUT
+# ─────────────────────────────────────────
+user_input = st.chat_input(
+    "Type your message...",
+    disabled=not is_healthy
+)
 
 if user_input:
+    # Show user message immediately
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_input)
 
+    # Call FastAPI and show response
     with st.chat_message("assistant", avatar="⚡"):
-        with st.spinner("Thinking..."):
+        with st.spinner("Calling FastAPI..."):
             try:
-                if api_available:
-                    ai_response, turn_count = chat_via_api(
-                        st.session_state.session_id,
-                        user_input,
-                        system_prompt
-                    )
-                else:
-                    ai_response, turn_count = chat_direct(
-                        st.session_state.session_id,
-                        user_input,
-                        system_prompt
-                    )
+                response = send_message(
+                    st.session_state.session_id,
+                    user_input,
+                    system_prompt
+                )
 
-                if ai_response:
+                if response.status_code == 200:
+                    data = response.json()
+                    ai_response = data["response"]
+                    st.session_state.turn_count = data["turn_count"]
+
                     st.markdown(ai_response)
-                    st.session_state.turn_count = turn_count
+
+                    # Save to history
                     st.session_state.chat_history.append({
                         "role": "user",
                         "content": user_input
@@ -185,10 +225,24 @@ if user_input:
                         "role": "assistant",
                         "content": ai_response
                     })
-                else:
-                    st.error("❌ No response received.")
 
+                elif response.status_code == 400:
+                    st.error(f"❌ Bad Request: {response.json().get('detail')}")
+
+                elif response.status_code == 500:
+                    st.error(f"❌ Server Error: {response.json().get('detail')}")
+
+                else:
+                    st.error(f"❌ Unexpected Error: {response.status_code}")
+
+            except requests.exceptions.ConnectionError:
+                st.error(
+                    f"❌ Cannot connect to FastAPI at `{API_URL}`\n\n"
+                    "Check that Railway backend is running."
+                )
+            except requests.exceptions.Timeout:
+                st.error("❌ Request timed out. FastAPI is taking too long.")
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"❌ Unexpected error: {str(e)}")
 
     st.rerun()
